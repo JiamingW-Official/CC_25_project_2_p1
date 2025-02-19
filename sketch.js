@@ -2,15 +2,13 @@ let font;
 let points = [];
 let words = ["Elegance", "In", "The", "Sky"];
 let currentWord = 0;
-let sampleFactor = 0.1; // controls point density; lower => more points
+let sampleFactor = 0.1; // controls point density; lower -> more points
 let fontSize = 300;     // large text size
-let effectMode = 0;     // interactive text effect mode (0 to 4)
+let effectMode = 0;     // interactive text effect mode (0 to 8)
 
-// An array to store recent mouse positions for the trail effect.
+// Trail settings for the gradient cursor (short-lived)
 let trails = [];
-// Trail lifetime in milliseconds (now reduced to 100ms)
-const trailLifetime = 100;
-// Cursor size (diameter)
+const trailLifetime = 100; // milliseconds
 const cursorDiameter = 40;
 
 function preload() {
@@ -35,24 +33,21 @@ function generatePoints() {
 }
 
 function draw() {
-  // Clear background completely each frame.
   background(30);
 
   // Update trail list with the current mouse position and timestamp.
   let currentTime = millis();
   trails.push({ x: mouseX, y: mouseY, t: currentTime });
-
-  // Remove trails older than trailLifetime milliseconds.
   trails = trails.filter(trail => currentTime - trail.t <= trailLifetime);
-
-  // Draw each trail with fading opacity based on its age.
+  
+  // Draw each trail with fading opacity.
   for (let trail of trails) {
-    let age = (currentTime - trail.t) / trailLifetime; // normalized age (0 to 1)
-    let alphaFactor = 1 - age; // fades linearly from 1 to 0 over trailLifetime
+    let age = (currentTime - trail.t) / trailLifetime;
+    let alphaFactor = 1 - age;
     drawGradient(trail.x, trail.y, cursorDiameter, alphaFactor);
   }
 
-  // --- Interactive Text Effects (drawn on top) ---
+  // --- Interactive Text Effects ---
   noStroke();
   fill(255);
   let t = millis() / 1000;
@@ -81,7 +76,7 @@ function draw() {
         break;
         
       case 1:
-        // Effect 1: Wavy – a sine‑wave based motion influenced by the mouse.
+        // Effect 1: Wavy – a sine-wave based motion influenced by the mouse.
         offsetX = map(mouseX, 0, width, -20, 20);
         offsetY = map(mouseY, 0, height, -20, 20);
         let wave = sin(t * 2 + x * 0.05 + y * 0.05) * 10;
@@ -90,7 +85,7 @@ function draw() {
         break;
         
       case 2:
-        // Effect 2: Perlin Noise – points morph with a noise‑based offset.
+        // Effect 2: Perlin Noise – points morph with a noise-based offset.
         let noiseFactor = noise(x * 0.01 + t, y * 0.01 + t);
         offsetX = map(noiseFactor, 0, 1, -mouseX * 0.05, mouseX * 0.05);
         offsetY = map(noiseFactor, 0, 1, -mouseY * 0.05, mouseY * 0.05);
@@ -118,24 +113,55 @@ function draw() {
         x = cx + spiralX;
         y = cy + spiralY;
         break;
+        
+      case 5:
+        // Effect 5: Drift Up – points gently float upward with a horizontal sway.
+        let drift = map(mouseY, 0, height, 0.5, 2);
+        y -= drift;
+        offsetX = map(noise(x, t), 0, 1, -5, 5);
+        x += offsetX;
+        break;
+        
+      case 6:
+        // Effect 6: Pulse Bounce – points pulse radially from the center.
+        let dx = x - cx;
+        let dy = y - cy;
+        let dCenter = dist(x, y, cx, cy);
+        let pulse = sin(t * 5 + dCenter * 0.05) * 20;
+        let angle = atan2(dy, dx);
+        x += cos(angle) * pulse;
+        y += sin(angle) * pulse;
+        break;
+        
+      case 7:
+        // Effect 7: Magnetic – points are gently attracted toward the mouse.
+        x = lerp(x, mouseX, 0.05);
+        y = lerp(y, mouseY, 0.05);
+        break;
+        
+      case 8:
+        // Effect 8: Glitch – points jitter delicately with a noise-based offset.
+        let glitchX = map(noise(x * 0.1, t * 10), 0, 1, -15, 15);
+        let glitchY = map(noise(y * 0.1, t * 10), 0, 1, -15, 15);
+        x += glitchX;
+        y += glitchY;
+        break;
     }
     
     ellipse(x, y, 3, 3);
   }
   
-  // Optional: Display current mode and instructions.
+  // Display instructions.
   fill(200);
   textSize(16);
   textAlign(LEFT, TOP);
-  text("Effect Mode: " + effectMode + "\nPress 'e' to change mode\nUp/Down arrows change density", 10, 10);
+  text("Effect Mode: " + effectMode +
+       "\nPress 'e' to change mode (0-8)" +
+       "\nUp/Down arrows change density", 10, 10);
 }
 
-// Draws a radial gradient circle centered at (cx, cy) with diameter d.
-// The gradient interpolates from light purple (center) to blue (edge).
-// The parameter alphaFactor (0-1) multiplies the alpha values for a fading effect.
 function drawGradient(cx, cy, d, alphaFactor = 1) {
   let r = d / 2;
-  // Loop from the outer edge (r) to the center (0)
   for (let i = r; i > 0; i--) {
     let inter = map(i, 0, r, 0, 1);
     let c1 = color(200, 150, 255, 200 * alphaFactor);
@@ -156,10 +182,10 @@ function mousePressed() {
 function keyPressed() {
   // Press 'e' to cycle through text effect modes.
   if (key === 'e' || key === 'E') {
-    effectMode = (effectMode + 1) % 5;
+    effectMode = (effectMode + 1) % 9;
   }
   
-  // Up/Down arrows adjust point density (and regenerate the text points).
+  // Up/Down arrows adjust point density.
   if (keyCode === UP_ARROW) {
     sampleFactor = constrain(sampleFactor - 0.01, 0.05, 0.2);
     generatePoints();
